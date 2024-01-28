@@ -1,0 +1,13 @@
+[Unit]
+Description=file-watch
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+User=root
+Group=root
+Type=simple
+ExecStart=file-watch -dst 192.168.0.253 -dport 514
+
+[Install]
+WantedBy=multi-user.target
