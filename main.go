@@ -19,13 +19,13 @@ import (
 	"time"
 )
 
-const tool = "file-notify"
-const version = "0.1"
+const _tool = "file-notify"
+const _version = "0.1"
 
 var (
-	Commit string
-	Branch string
-	debug  bool = false
+	_commit string
+	_branch string
+	debug   bool = false
 )
 
 type FileData struct {
@@ -48,6 +48,20 @@ type AuditPlan struct {
 type AuditJob struct {
 	FileList *[]FileData
 	Audit    AuditPlan
+}
+
+// Build option to track git commit/build if desired
+func Version(b bool) {
+	if b {
+		if _commit != "" {
+			// go build -ldflags="-X main._commit=$(git rev-parse --short HEAD) -X main._branch=$(git branch | awk '{print $2}')"
+			fmt.Fprintf(os.Stdout, "%s v%s (commit: %s, branch: %s)\n", _tool, _version, _commit, _branch)
+		} else {
+			// go build
+			fmt.Fprintf(os.Stdout, "%s v%s\n", _tool, _version)
+		}
+		os.Exit(0)
+	}
 }
 
 func TcpClient(tx string, retry, interval int) (net.Conn, error) {
@@ -86,7 +100,7 @@ func _startLog(fileName string) *os.File {
 
 	log.SetOutput(fLog)
 	log.SetFlags(log.Lmicroseconds | log.LUTC | log.Ldate | log.Ltime)
-	log.Printf("%s v%s starting\n", tool, version)
+	log.Printf("%s v%s starting\n", _tool, _version)
 	log.Printf("debug: %v\n", debug)
 
 	return fLog
@@ -210,7 +224,7 @@ func _buildJobs(rules *[]AuditPlan) *[]AuditJob {
 		j := AuditJob{FileList: nil, Audit: a}
 		j.FileList = _buildFileInvenory(a)
 		if j.FileList == nil {
-			s := fmt.Sprintf("skipping line %d of %s.rules. check rules and file system path", line, tool)
+			s := fmt.Sprintf("skipping line %d of %s.rules. check rules and file system path", line, _tool)
 			log.Println(s)
 			fmt.Fprintln(os.Stderr, s)
 			continue
@@ -265,7 +279,7 @@ func AuditRun(ap AuditJob, jobNo int, tx string) int {
 		hostname, _ := os.Hostname()
 		pid := os.Getpid()
 		// <105> = audit.alert (facility.severity)
-		hdr := fmt.Sprintf("<105>%v %v %s[%d] ", now, hostname, tool, pid)
+		hdr := fmt.Sprintf("<105>%v %v %s[%d] ", now, hostname, _tool, pid)
 		client, err := TcpClient(tx, 2, 2)
 		if err != nil {
 			log.Println(err)
@@ -310,8 +324,10 @@ func main() {
 	_log := flag.String("log", "file-watch.log", "log file")
 	_poll := flag.Int("poll", 1, "poll time")
 	_rules := flag.String("rules", "file-watch.rules", "rules configuration file")
+	_version := flag.Bool("version", false, "Display version and exit")
 	flag.Parse()
 
+	Version(*_version)
 	debug = *_debug
 	tx := *_dst + ":" + strconv.Itoa(*_dport)
 
